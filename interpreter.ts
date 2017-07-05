@@ -157,20 +157,24 @@ let fullOutput: number[] = []
 let stateElement = <HTMLDivElement>document.getElementById('state')
 
 function driver() {
+    let buf = ''
     function outputByte(x) {
-        outputString(escapeHtml(String.fromCharCode(x)))
-        document.body.scrollTop = document.body.scrollHeight
+        buf += escapeHtml(String.fromCharCode(x))
     }
     function inputByte() {
         if (inputBuffer.length === 0)
             return null;
         let x = inputBuffer.shift()!
-        outputString(`<b>${escapeHtml(String.fromCharCode(x))}</b>`)
-        document.body.scrollTop = document.body.scrollHeight
+        buf += `<b>${escapeHtml(String.fromCharCode(x))}</b>`
         return x
     }
 
     let tr = run(pseudoTime + 10000000, outputByte, inputByte)
+
+    if (buf.length > 0) {
+        outputString(buf)
+        document.body.scrollTop = document.body.scrollHeight
+    }
 
     switch (tr) {
     case "halt":
