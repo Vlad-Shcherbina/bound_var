@@ -49,22 +49,22 @@ x.onload = function() {
     finger = 0
     driver()
 }
-x.open('GET', 'materials/codex.umz')
+x.open('GET', 'materials/codex_unpacked.um')
 x.responseType = "arraybuffer"
 x.send()
 
 let regs: number[] = [0, 0, 0, 0, 0, 0, 0, 0]
 let arrays: (Uint32Array|null)[] = [null]
+let free: number[] = []
 let finger: number = -1
-
-let inputBuffer: number[] = []
-let outputBuffer: number[] = []
-
-let output = '';
+let pseudoTime = 0
 
 type TerminationReason = "limit" | "halt" | "wait_input"
-let pseudoTime = 0
-function run(pseudoTimeLimit: number): TerminationReason {
+
+function run(
+        pseudoTimeLimit: number,
+        outputByte: (x: number) => void,
+        inputByte: () => number | null): TerminationReason {
     while (true) {
         if (pseudoTime >= pseudoTimeLimit)
             return "limit"
@@ -108,27 +108,33 @@ function run(pseudoTimeLimit: number): TerminationReason {
             case 7:  // halt
                 return "halt"
             case 8:  // allocation
-                arrays.push(new Uint32Array(regs[c]))
-                regs[b] = arrays.length - 1
+                if (free.length > 0) {
+                    let i = free.pop()!
+                    assert(arrays[i] === null)
+                    arrays[i] = new Uint32Array(regs[c])
+                    regs[b] = i
+                } else {
+                    arrays.push(new Uint32Array(regs[c]))
+                    regs[b] = arrays.length - 1
+                }
                 pseudoTime += regs[c] / 50
                 break
             case 9:  // abandonment
-                // TODO
                 arrays[regs[c]] = null
+                free.push(regs[c])
                 break
             case 10:  // output
                 assert(regs[c] >= 0 && regs[c] <= 255)
-                outputBuffer.push(regs[c])
+                outputByte(regs[c])
                 break
             case 11:  // input
-                if (inputBuffer.length == 0) {
+                let i = inputByte()
+                if (i == null) {
                     finger--;
                     pseudoTime--;
                     return "wait_input"
                 }
-                console.log(inputBuffer)
-                let t = inputBuffer.shift()!
-                regs[c] = t
+                regs[c] = i
                 break
             case 12:  // load program
                 if (regs[b] != 0) {
@@ -145,30 +151,26 @@ function run(pseudoTimeLimit: number): TerminationReason {
     }
 }
 
+let inputBuffer: number[] = []
 let fullOutput: number[] = []
 
 let stateElement = <HTMLDivElement>document.getElementById('state')
 
 function driver() {
-    let tr = run(pseudoTime + 10000000)
-    let printable = true
-
-    let start = outputBuffer.length
-    while (start > 0 && outputBuffer[start - 1] < 128)
-        start--;
-
-    if (start > 0)
-        outputString('<i>BIN</i>\n')
-    let i = 0
-    for (let c of outputBuffer) {
-        if (i >= start)
-            outputString(escapeHtml(String.fromCharCode(c)))
-        fullOutput.push(c)
-        i++
+    function outputByte(x) {
+        outputString(escapeHtml(String.fromCharCode(x)))
+        document.body.scrollTop = document.body.scrollHeight
     }
-    if (outputBuffer.length > 0)
-        document.body.scrollTop = document.body.scrollHeight;
-    outputBuffer = []
+    function inputByte() {
+        if (inputBuffer.length === 0)
+            return null;
+        let x = inputBuffer.shift()!
+        outputString(`<b>${escapeHtml(String.fromCharCode(x))}</b>`)
+        document.body.scrollTop = document.body.scrollHeight
+        return x
+    }
+
+    let tr = run(pseudoTime + 10000000, outputByte, inputByte)
 
     switch (tr) {
     case "halt":
@@ -189,7 +191,7 @@ function driver() {
     }
 }
 
-let inputElement = (<HTMLInputElement>document.getElementById('input'))
+let inputElement = (<HTMLTextAreaElement>document.getElementById('input'))
 inputElement.addEventListener("keypress", function(e) {
     if (e.keyCode == 13) {
         e.preventDefault()
