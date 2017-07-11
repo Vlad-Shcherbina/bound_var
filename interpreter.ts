@@ -144,7 +144,7 @@ function run(
                 finger = regs[c]
                 break
             default:
-                assert(false, `unrecognized opcode ${opcode}`)
+                assert(false, 'unrecognized opcode')
             }
         }
         pseudoTime++;
@@ -183,7 +183,7 @@ function driver() {
         stateElement.innerHTML = '<i>halted</i>'
         break
     case "wait_input":
-        stateElement.innerHTML = '<i>waiting for input</i>'
+        stateElement.innerHTML = ''
         setTimeout(driver, 100)
         break
     case "limit":
