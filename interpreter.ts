@@ -197,7 +197,7 @@ function driver() {
 
 let inputElement = (<HTMLTextAreaElement>document.getElementById('input'))
 inputElement.addEventListener("keypress", function(e) {
-    if (e.keyCode == 13) {
+    if (e.keyCode == 13 && !e.shiftKey) {
         e.preventDefault()
         let s = inputElement.value + '\n'
         for (let i = 0; i < s.length; i++)
