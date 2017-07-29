@@ -49,7 +49,7 @@ x.onload = function() {
     finger = 0
     driver()
 }
-x.open('GET', 'materials/codex_unpacked.um')
+x.open('GET', 'materials/' + (window.location.hash.substring(1) || 'codex_unpacked.um'))
 x.responseType = "arraybuffer"
 x.send()
 
